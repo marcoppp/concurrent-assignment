@@ -53,16 +53,16 @@ class Conductor extends Thread {
     Pos barpos;                      // Barrier position (provided by GUI)
     Color col;                       // Car  color
     Gate mygate;                     // Gate at start position
-    Alley aly = new Alley();
-    //Semaphore carsInAlley = new Semaphore(4);
-    //Semaphore[][] arrayOfTiles = new Semaphore[12][11];
+    Alley aly;
+    Tiles tiles;
     
     Pos curpos;                      // Current position 
     Pos newpos;                      // New position to go to
     
-    public Conductor(int no, CarDisplayI cd, Gate g, Alley myAlley) {
+    public Conductor(int no, CarDisplayI cd, Gate g, Alley myAlley, Tiles myTiles) {
         
         this.aly = myAlley;
+        this.tiles = myTiles;
         this.no = no;
         this.cd = cd;
         mygate = g;
@@ -76,11 +76,6 @@ class Conductor extends Thread {
             basespeed = -1.0;  
             variation = 0; 
         }
-        /* for (int i = 0; i < 11; i++){//column
-            for (int j = 0; j < 12; j++){//row
-                arrayOfTiles[j][i] = new Semaphore(1);
-            }
-        } */
     }
     
     public synchronized void setSpeed(double speed) { 
@@ -118,6 +113,7 @@ class Conductor extends Thread {
             CarI car = cd.newCar(no, col, startpos);
             curpos = startpos;
             cd.register(car);
+            tiles.get(startpos); //init semaphore
             
             while (true) { 
                 
@@ -127,14 +123,17 @@ class Conductor extends Thread {
                 }
                 
                 newpos = nextPos(curpos);
+                
                 if (curpos.col == 3 && newpos.col == 2) {
                     aly.enter(no);
                 }
-                if (curpos.col == 0 && newpos.col == 1) {
+                if (curpos.col == 2 && newpos.col == 3) {
                     aly.leave(no);
                 }
-
+                
+                tiles.get(newpos); //crash-aoviding
                 car.driveTo(newpos);
+                tiles.letGo(curpos);
                 
                 curpos = newpos;
             }
@@ -155,15 +154,15 @@ public class CarControl implements CarControlI{
     Gate[] gate;              // Gates
     private boolean insideAlley;
     Alley myAlley =  new Alley();
+    Tiles myTiles = new Tiles();
     
     public CarControl(CarDisplayI cd) {
         this.cd = cd;
         conductor = new Conductor[9];
         gate = new Gate[9];
-
         for (int no = 0; no < 9; no++) {
             gate[no] = new Gate();
-            conductor[no] = new Conductor(no,cd,gate[no],myAlley);
+            conductor[no] = new Conductor(no,cd,gate[no],myAlley,myTiles);
             conductor[no].setName("Conductor-" + no);
             conductor[no].start();
         } 
