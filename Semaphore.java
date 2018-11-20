@@ -10,8 +10,9 @@ public class Semaphore {
     private int s = 0;
 
     public Semaphore(int s0) {
-        if (s0 >= 0) 
+        if (s0 >= 0) {
             s = s0;
+            System.out.println("semaphore created with "+s0); }
         else 
             throw new Error("Semaphore initialized to negative value: " + s0);
     }
