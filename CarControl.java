@@ -55,14 +55,16 @@ class Conductor extends Thread {
     Gate mygate;                     // Gate at start position
     Alley aly;
     Tiles tiles;
+    Barrier bar;
     
     Pos curpos;                      // Current position 
     Pos newpos;                      // New position to go to
     
-    public Conductor(int no, CarDisplayI cd, Gate g, Alley myAlley, Tiles myTiles) {
+    public Conductor(int no, CarDisplayI cd, Gate g, Alley myAlley, Tiles myTiles, Barrier myBarrier) {
         
         this.aly = myAlley;
         this.tiles = myTiles;
+        this.bar = myBarrier;
         this.no = no;
         this.cd = cd;
         mygate = g;
@@ -123,12 +125,17 @@ class Conductor extends Thread {
                 }
                 
                 newpos = nextPos(curpos);
-                
+               
                 if (curpos.col == 3 && newpos.col == 2) {
                     aly.enter(no);
                 }
                 if (curpos.col == 2 && newpos.col == 3) {
                     aly.leave(no);
+                }
+                if(curpos.col > 1) {
+                    if ((curpos.row == 4 && newpos.row == 5)||(curpos.row == 5 && newpos.row == 4)) {
+                        bar.sync();
+                    }
                 }
                 
                 tiles.get(newpos); //crash-aoviding
@@ -155,6 +162,8 @@ public class CarControl implements CarControlI{
     private boolean insideAlley;
     Alley myAlley =  new Alley();
     Tiles myTiles = new Tiles();
+    Barrier myBarrier = new Barrier();
+    //Semaphore bSemaphore = new Semaphore(1);
     
     public CarControl(CarDisplayI cd) {
         this.cd = cd;
@@ -162,7 +171,7 @@ public class CarControl implements CarControlI{
         gate = new Gate[9];
         for (int no = 0; no < 9; no++) {
             gate[no] = new Gate();
-            conductor[no] = new Conductor(no,cd,gate[no],myAlley,myTiles);
+            conductor[no] = new Conductor(no,cd,gate[no],myAlley,myTiles,myBarrier);
             conductor[no].setName("Conductor-" + no);
             conductor[no].start();
         } 
@@ -178,18 +187,28 @@ public class CarControl implements CarControlI{
     }
 
     public void barrierOn() { 
-        cd.println("Barrier On not implemented in this version");
+        cd.println("Barrier On");
+        myBarrier.on();
     }
 
     public void barrierOff() { 
-        cd.println("Barrier Off not implemented in this version");
+        cd.println("Barrier Off");
+        myBarrier.off();
     }
 
     public void barrierSet(int k) { 
-        cd.println("Barrier threshold setting not implemented in this version");
+        cd.println("Barrier threshold changed");
+        if (myBarrier.set(k)) {
+            try {
+                Thread.sleep(4000);
+            } catch (InterruptedException e) {
+                //TODO: handle exception
+            }
+        }
+        
         // This sleep is solely for illustrating how blocking affects the GUI
         // Remove when feature is properly implemented.
-        try { Thread.sleep(3000); } catch (InterruptedException e) { }
+        // try { Thread.sleep(3000); } catch (InterruptedException e) { }
     }
 
     public void removeCar(int no) { 
